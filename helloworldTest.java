@@ -3,6 +3,7 @@
 //DEPS org.junit.jupiter:junit-jupiter-api:5.10.0
 //DEPS org.junit.jupiter:junit-jupiter-engine:5.10.0
 //DEPS org.junit.platform:junit-platform-launcher:1.10.0
+//DEPS org.junit.platform:junit-platform-reporting:1.10.0
 
 //SOURCES helloworld.java
 
@@ -13,10 +14,14 @@ import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
 import org.junit.platform.launcher.core.LauncherFactory;
 import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
 import org.junit.platform.launcher.listeners.LoggingListener;
+import org.junit.platform.reporting.legacy.xml.LegacyXmlReportGeneratingListener;
 
 import static java.lang.System.out;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
+
+import java.io.PrintWriter;
+import java.nio.file.Path;
 
 // JUnit5 Test class for helloworld
 public class helloworldTest {
@@ -28,7 +33,7 @@ public class helloworldTest {
     }   
 
     // Run all Unit tests with JBang with ./helloworld.java
-    public static void main(final String... args) {
+    public static void main(final String... args) throws Exception {
         final LauncherDiscoveryRequest request =
                 LauncherDiscoveryRequestBuilder.request()
                         .selectors(selectClass(helloworldTest.class))
@@ -41,7 +46,9 @@ public class helloworldTest {
             };
         });
         final SummaryGeneratingListener execListener = new SummaryGeneratingListener();
-        launcher.registerTestExecutionListeners(execListener, logListener);
+        final LegacyXmlReportGeneratingListener xmlListener = new LegacyXmlReportGeneratingListener(
+                Path.of("."), new PrintWriter(System.out));
+        launcher.registerTestExecutionListeners(execListener, logListener, xmlListener);
         launcher.execute(request);
         execListener.getSummary().printTo(new java.io.PrintWriter(out));
     }
