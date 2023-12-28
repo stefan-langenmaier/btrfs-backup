@@ -25,6 +25,12 @@ jobs:
       - name: Setup JBang
         uses: jbangdev/setup-jbang@main
 
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v4
+        if: success() || failure() # always run even if the previous step fails
+        with:
+          report_paths: '**/build/test-results/test/TEST-*.xml'
+
       - name: Build JAR package
         run: |
           jbang export portable -O helloworld.jar helloworld.java
@@ -44,3 +50,12 @@ jobs:
         with:
           name: helloworld
           path: helloworld
+      
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            helloworld.java
+            helloworld.jar
+            helloworld
