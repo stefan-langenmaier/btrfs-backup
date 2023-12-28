@@ -27,11 +27,11 @@ jobs:
 
       - name: Build JAR package
         run: |
-          jbang export portable --native -O helloworld.jar helloworld.java
+          jbang export portable -O helloworld.jar helloworld.java
       
       - name: Build binary package
         run: |
-          jbang export portable --native -O helloworld helloworld.java
+          jbang export native -O helloworld helloworld.java
 
       - name: Upload JAR
         uses: actions/upload-artifact@v2
