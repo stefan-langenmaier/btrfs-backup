@@ -1,0 +1,46 @@
+name: build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '21'
+          distribution: 'graalvm-community'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          native-image-job-reports: 'true'
+
+      - name: Setup JBang
+        uses: jbangdev/setup-jbang@main
+
+      - name: Build JAR package
+        run: |
+          jbang export portable --native -O helloworld.jar helloworld.java
+      
+      - name: Build binary package
+        run: |
+          jbang export portable --native -O helloworld helloworld.java
+
+      - name: Upload JAR
+        uses: actions/upload-artifact@v2
+        with:
+          name: helloworld.jar
+          path: helloworld.jar
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v2
+        with:
+          name: helloworld
+          path: helloworld
