@@ -1,0 +1,24 @@
+rootVolume: "/"
+backup:
+  user: REPLACE_ME
+  host: REPLACE_ME
+  path: REPLACE_ME
+  protocol: "ssh"
+snapshots:
+  path: "/.snapshots"
+volumes: # add more volumes here
+  'root':
+    path: "/"
+    retention: # this is just an example add/remove retention periods as you like
+      hour:
+        duration: 'PT1H'
+        count: 10
+      day:
+        duration: 'PT24H'
+        count: 24
+      week:
+        duration: 'P7DT0H'
+        count: 7
+      month:
+        duration: 'P30DT0H'
+        count: 4
