@@ -87,7 +87,7 @@ class BtrfsBackup implements Callable<Integer> {
 
     @CommandLine.Option(
         names = {"-x"},
-        description = "Print config",
+        description = "Print config sample and stop application",
         required = false
     )
     private boolean printConfig = false;
@@ -129,7 +129,24 @@ class BtrfsBackup implements Callable<Integer> {
         }
 
         BtrfsRunner.setConfig(config);
+        DefaultRunner.setConfig(config);
         SnapshotUtils.setConfig(config);
+
+        try {
+            var process = BtrfsRunner.executeLocal("version");
+            process.waitFor();
+            if (process.exitValue() != 0) {
+                logger.log(Level.SEVERE, "No permission to use btrfs with sudo");
+                System.exit(-1);
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            logger.log(Level.SEVERE, "Interrupted while checking for permissions");
+            Thread.currentThread().interrupt();
+            System.exit(-1);
+        }
+
+        config.status.resume();
     }
 
     private void printConfig() {
@@ -137,15 +154,14 @@ class BtrfsBackup implements Callable<Integer> {
         System.err.println("You can store it in the current working dir or in ~/.config/ as backup.yaml");
 
         InputStream inputStream = BtrfsBackup.class.getResourceAsStream("backup.yaml.sample");
-
-        // the stream holding the file content
         if (inputStream == null) {
             throw new IllegalArgumentException("resource for sample config not found!");
         }
 
-        try (InputStreamReader streamReader =
-                    new InputStreamReader(inputStream, StandardCharsets.UTF_8);
-             BufferedReader reader = new BufferedReader(streamReader)) {
+        try (
+            InputStreamReader streamReader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
+            BufferedReader reader = new BufferedReader(streamReader);
+        ) {
 
             String line;
             while ((line = reader.readLine()) != null) {
@@ -402,10 +418,10 @@ class BtrfsBackup implements Callable<Integer> {
             Path configPath;
             configPath = Paths.get("./backup.yaml");
             if (!configPath.toFile().exists()) {
-                configPath = Paths.get(System.getenv("XDG_CONFIG_HOME") + "backup.yaml");
+                configPath = Paths.get(System.getenv("XDG_CONFIG_HOME") + "/backup.yaml");
             }
             if (!configPath.toFile().exists()) {
-                configPath = Paths.get(System.getenv("HOME") + ".config/backup.yaml");
+                configPath = Paths.get(System.getProperty("user.home") + "/.config/backup.yaml");
             }
             if (!configPath.toFile().exists()) {
                 logger.log(Level.SEVERE, "no configuration file found");
@@ -426,22 +442,8 @@ class BtrfsBackup implements Callable<Integer> {
 
             c.now = LocalDateTime.now();
             c.pool = Executors.newWorkStealingPool();
-
-            try {
-                var process = BtrfsRunner.executeLocal("version");
-                process.waitFor();
-                if (process.exitValue() != 0) {
-                    logger.log(Level.SEVERE, "No permission to use btrfs with sudo");
-                    System.exit(-1);
-                }
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-                logger.log(Level.SEVERE, "Interrupted while checking for permissions");
-                Thread.currentThread().interrupt();
-                System.exit(-1);
-            }
-
             c.status = new SpinnerTask();
+            c.status.pause();
             Executors.newSingleThreadExecutor().submit(c.status);
 
             return c;
