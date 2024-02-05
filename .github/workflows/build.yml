@@ -6,6 +6,9 @@ on:
     branches:
       - master
 
+permissions:
+  checks: write
+
 jobs:
   build:
     name: Build
@@ -28,6 +31,16 @@ jobs:
       - name: Setup JBang
         uses: jbangdev/setup-jbang@main
 
+      - name: Run Tests
+        run: |
+          jbang run BtrfsBackupTest.java
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v4
+        if: success() || failure() # always run even if the previous step fails
+        with:
+          report_paths: './TEST-*.xml'
+
       - name: Build JAR package
         run: |
           jbang export portable BtrfsBackup.java
@@ -47,3 +60,12 @@ jobs:
         with:
           name: BtrfsBackup
           path: BtrfsBackup
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            BtrfsBackup.java
+            BtrfsBackup.jar
+            BtrfsBackup
