@@ -343,19 +343,13 @@ class BtrfsBackup implements Callable<Integer> {
             c.now = LocalDateTime.now();
             c.pool = Executors.newWorkStealingPool();
 
-            ProcessBuilder processBuilder = new ProcessBuilder();
-            processBuilder.command("sudo", "btrfs", "version");
             try {
-                var process = processBuilder.start();
+                var process = BtrfsRunner.executeLocal("version");
                 process.waitFor();
                 if (process.exitValue() != 0) {
                     logger.log(Level.SEVERE, "No permission to use btrfs with sudo");
                     System.exit(-1);
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
-                logger.log(Level.SEVERE, "Error while checking for permissions");
-                System.exit(-1);
             } catch (InterruptedException e) {
                 e.printStackTrace();
                 logger.log(Level.SEVERE, "Interrupted while checking for permissions");
