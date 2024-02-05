@@ -1,0 +1,7 @@
+[Unit]
+Description=Take BTRFS snapshots
+After=local-fs.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/BtrfsBackup

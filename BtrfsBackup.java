@@ -14,22 +14,26 @@
 //DEPS io.goodforgod:graalvm-hint-processor:1.1.1
 //DEPS io.goodforgod:graalvm-hint-annotations:1.1.1
 //FILES resources/config/backup.yaml.sample
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
+//FILES resources/systemd/btrfs-backup.service
+//FILES resources/systemd/btrfs-backup.timer
 
 import static java.lang.StringTemplate.STR;
 
 import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.lang.ProcessBuilder.Redirect;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.CopyOption;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -164,9 +168,28 @@ class BtrfsBackup implements Callable<Integer> {
     @Override
     public Integer call() throws Exception {
         snapshot();
-        backup();
         prune();
 
+        return 0;
+    }
+
+    @Command(name = "install-systemd")
+    public Integer installSystemd() throws Exception {
+        try (InputStream is = this.getClass().getClassLoader().getResourceAsStream("btrfs-backup.service")) {
+            Files.copy(is, Paths.get(System.getProperty("user.home") + "/.config/systemd/user/btrfs-backup.service"), StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+        }
+
+        try (InputStream is = this.getClass().getClassLoader().getResourceAsStream("btrfs-backup.timer")) {
+            Files.copy(is, Paths.get(System.getProperty("user.home") + "/.config/systemd/user/btrfs-backup.timer"), StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+        }
+
+        DefaultRunner.executeLocal("systemctl", "--user", "daemon-reload");
+        DefaultRunner.executeLocal("systemctl", "--user", "enable", "--now", "btrfs-backup.timer");
+
+        System.err.println("Make sure you have installed the native version in /usr/local/sbin/");
+        System.err.println("Make sure you have placed your config in ~/config/backup.yaml");
         return 0;
     }
 
@@ -256,9 +279,70 @@ class BtrfsBackup implements Callable<Integer> {
         config.status.resume();
     }
 
+    public class DefaultRunner {
+        protected static Config config;
+        protected static String[] localPrefix;
+
+        static {
+            localPrefix = new String[] {};
+        }
+
+        private DefaultRunner() {}
+
+        public static void setConfig(Config config) {
+            DefaultRunner.config = config;
+        }
+
+        public static Process executeLocal(String... command) {
+            return execute(prepareLocal(command));
+        }
+
+        public static Process executeRemote(String... command) {
+            return execute(prepareRemote(command));
+        }
+
+        public static ProcessBuilder prepareLocal(String... command) {
+            return prepare(ArrayUtils.addAll(localPrefix, command));
+        }
+
+        public static ProcessBuilder prepareRemote(String... command) {
+            final String[] remotePrefix = new String[] {"ssh", config.backup.user() + "@" + config.backup.host()};
+
+            var prefix = ArrayUtils.addAll(remotePrefix, localPrefix);
+            return prepare(ArrayUtils.addAll(prefix, command));
+        }
+
+        private static ProcessBuilder prepare(String... command) {
+            ProcessBuilder processBuilder = new ProcessBuilder();
+            processBuilder.command(command);
+            return processBuilder;
+        }
+
+        private static Process execute(ProcessBuilder pb) {
+            Process process = null;
+
+            try {
+                process = pb.start();
+                ProcessReadTask task = new ProcessReadTask(process.getErrorStream());
+                config.pool.submit(task);
+            } catch (IOException e) {
+                e.printStackTrace();
+                logger.log(Level.SEVERE, "unable to start sub process");
+                System.exit(-1);
+                return null;
+            }
+
+            return process;
+        }
+    }
+
     public class BtrfsRunner {
-        private static Config config;
-        private static final String[] localPrefix = new String[] {"sudo", "btrfs"};
+        protected static Config config;
+        protected static String[] localPrefix;
+
+        static {
+            localPrefix = new String[] {"sudo", "btrfs"};
+        }
 
         private BtrfsRunner() {}
 

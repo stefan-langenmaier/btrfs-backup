@@ -1,0 +1,10 @@
+[Unit]
+Description=BTRFS snapshots
+
+[Timer]
+# one minute is twice the default checkpoint interval
+OnCalendar=*:0/1
+Persistent=true
+
+[Install]
+WantedBy=default.target
