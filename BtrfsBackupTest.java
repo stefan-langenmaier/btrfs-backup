@@ -68,13 +68,13 @@ public class BtrfsBackupTest {
         config.now = LocalDateTime.now(
             Clock.fixed(Instant.parse("2024-01-04T20:15:30.00Z"), ZoneId.of("UTC"))
         );
-        Map<String, Config.Keep> keeps = Map.of(
-            "hour", new Config.Keep(Duration.parse("PT1H"), 10),
-            "daily", new Config.Keep(Duration.parse("PT24H"), 24)
+        Map<String, Config.Retention> retentions = Map.of(
+            "hour", new Config.Retention(Duration.parse("PT1H"), 10),
+            "daily", new Config.Retention(Duration.parse("PT24H"), 24)
         );
 
         Map<String, Config.Volume> volumes = Map.of(
-            "test", new Config.Volume("/test", keeps)
+            "test", new Config.Volume("/test", retentions)
         );
 
         config.volumes=volumes;
