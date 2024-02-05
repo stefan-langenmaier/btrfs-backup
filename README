@@ -1,0 +1,57 @@
+# Usage
+
+
+## Config
+
+Use the `-x` switch to generate a sample config and place it in `~/.config/backup.yaml`.
+
+
+## Run
+
+Just run `BtrfsBackup` for the default options. Or check the `-h` help for other subcommands.
+
+## Permissions
+
+You need to be able to run btrfs as root without password. Create the follwing config e.g.
+
+```
+sudo visudo /etc/sudoers.d/10-btrfs
+youruser ALL=(ALL) NOPASSWD: /usr/bin/btrfs
+```
+
+## Automation
+
+Use the `install-systemd` subcommand to configure systemd.
+
+# Setup for non btrfs targets
+
+## To non-btrfs system
+
+* fallocate -l 1G mydisk.img # not working on nfs
+* truncate -s 1G mydisk.img
+* cryptsetup -y luksFormat mydisk.img
+* sudo cryptsetup luksOpen mydisk.img mydisk
+* ls -la /dev/mapper/mydisk
+* sudo mkfs.btrfs -L mydisk /dev/mapper/mydisk
+*  mount /dev/mapper/mydisk /mnt/backup-storage/mounted
+
+### resize
+
+* cryptsetup luksClose mydisk
+* truncate -s +1G mydisk.img
+* sudo cryptsetup luksOpen mydisk.img mydisk
+* cryptsetup resize mydisk
+*  mount /dev/mapper/mydisk /mnt/backup-storage/mounted
+* btrfs filesystem resize max /mnt/backup-storage/mounted
+
+
+# Tests
+
+* jbang run BtrfsBackupTest.java
+
+# Idea: Estimate size
+
+sudo btrfs send -v --no-data  /.snapshots/test-20231221-104833/ | btrfs receive --dump | less
+
+extents have a fixed length
+the rest is metadata estimate operation as 4k
