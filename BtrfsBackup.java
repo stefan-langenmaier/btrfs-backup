@@ -13,10 +13,12 @@
 //DEPS info.picocli:picocli-codegen:4.7.5
 //DEPS io.goodforgod:graalvm-hint-processor:1.1.1
 //DEPS io.goodforgod:graalvm-hint-annotations:1.1.1
+//FILES resources/config/backup.yaml.sample
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -76,6 +78,13 @@ class BtrfsBackup implements Callable<Integer> {
     )
     private boolean[] verbosity = new boolean[0];
 
+    @CommandLine.Option(
+        names = {"-x"},
+        description = "Print config",
+        required = false
+    )
+    private boolean printConfig = false;
+
     @Parameters(
         index = "0",
         description = "The volumes to backup",
@@ -97,6 +106,12 @@ class BtrfsBackup implements Callable<Integer> {
                 default -> Level.FINEST;
         });
 
+        if (printConfig) {
+            printConfig();
+            System.exit(0);
+            return;
+        }
+
         config = ConfigLoader.loadDefaults();
 
         config.activeVolumes = config.volumes;
@@ -108,6 +123,31 @@ class BtrfsBackup implements Callable<Integer> {
 
         BtrfsRunner.setConfig(config);
         SnapshotUtils.setConfig(config);
+    }
+
+    private void printConfig() {
+        System.err.println("Following is an example config file");
+        System.err.println("You can store it in the current working dir or in ~/.config/ as backup.yaml");
+
+        InputStream inputStream = BtrfsBackup.class.getResourceAsStream("backup.yaml.sample");
+
+        // the stream holding the file content
+        if (inputStream == null) {
+            throw new IllegalArgumentException("resource for sample config not found!");
+        }
+
+        try (InputStreamReader streamReader =
+                    new InputStreamReader(inputStream, StandardCharsets.UTF_8);
+             BufferedReader reader = new BufferedReader(streamReader)) {
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.println(line);
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public static void main(String... args) {
