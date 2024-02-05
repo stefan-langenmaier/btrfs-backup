@@ -199,7 +199,7 @@ class BtrfsBackup implements Callable<Integer> {
 
     private void prune(String volumeId, Config config) throws Exception {
         Process processLocalSnapshots = BtrfsRunner.executeLocal("sub", "list",  config.snapshots.path().toString());
-        ParseSnapshotsTask parser = new ParseSnapshotsTask(processLocalSnapshots.getInputStream());
+        ParseSnapshotsTask parser = new ParseSnapshotsTask(volumeId, processLocalSnapshots.getInputStream());
         Future<List<Snapshot>> futureLocalSnapshots = config.pool.submit(parser);
         var localSnapshots = futureLocalSnapshots.get();
         var keepSnapshots = SnapshotUtils.prune(futureLocalSnapshots.get(), config, volumeId);
@@ -223,11 +223,11 @@ class BtrfsBackup implements Callable<Integer> {
 
     private void backup(String volumeId, Config config) throws Exception {
         Process processLocalSnapshots = BtrfsRunner.executeLocal("sub", "list",  config.snapshots.path().toString());
-        ParseSnapshotsTask parser = new ParseSnapshotsTask(processLocalSnapshots.getInputStream());
+        ParseSnapshotsTask parser = new ParseSnapshotsTask(volumeId, processLocalSnapshots.getInputStream());
         Future<List<Snapshot>> futureLocalSnapshots = config.pool.submit(parser);
 
         Process processRemoteSnapshots = BtrfsRunner.executeRemote("sub", "list",  config.backup.path());
-        ParseSnapshotsTask parseRemoteSnapshots = new ParseSnapshotsTask(processRemoteSnapshots.getInputStream());
+        ParseSnapshotsTask parseRemoteSnapshots = new ParseSnapshotsTask(volumeId, processRemoteSnapshots.getInputStream());
         Future<List<Snapshot>> futureRemoteSnapshots = config.pool.submit(parseRemoteSnapshots);
 
         Optional<Snapshot> latestCommonSnapshot = SnapshotUtils.getLatestCommonSnapshot(futureLocalSnapshots.get(), futureRemoteSnapshots.get());
@@ -549,9 +549,11 @@ class ProcessReadTask implements Callable<List<String>> {
 class ParseSnapshotsTask implements Callable<List<Snapshot>> {
 
     private InputStream inputStream;
+    private String volumeId;
 
-    public ParseSnapshotsTask(InputStream inputStream) {
+    public ParseSnapshotsTask(String volumeId, InputStream inputStream) {
         this.inputStream = inputStream;
+        this.volumeId = volumeId;
     }
 
     @Override
@@ -561,6 +563,7 @@ class ParseSnapshotsTask implements Callable<List<Snapshot>> {
             .lines()
             .map(SnapshotUtils::of)
             .filter(s -> s.isSnapshot())
+            .filter(s -> s.volumeName().equals(volumeId))
             .collect(Collectors.toList());
     }
 }
