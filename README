@@ -1,5 +1,21 @@
 # Usage
 
+## Getting started
+
+### Remotely
+
+asdf plugin-add jbang
+asdf install jbang latest
+asdf global jbang latest
+jbang https://github.com/stefan-langenmaier/btrfs-backup/blob/master/BtrfsBackup.java
+
+
+### Binary
+
+wget https://github.com/stefan-langenmaier/btrfs-backup/releases/download/$LATEST_VERSION/BtrfsBackup
+chmod +x BtrfsBackup
+mv BtrfsBackup /usr/local/sbin/
+BtrfsBackup
 
 ## Config
 
